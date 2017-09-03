@@ -1,5 +1,7 @@
 #!/bin/bash
 
+DELETE_FLAGS=
+
 while [[ $# -gt 1 ]]; do
   key=$1
 
@@ -7,6 +9,8 @@ while [[ $# -gt 1 ]]; do
     -p | --pretend )
       PRETEND=YES
       ;;
+    -d | --delete )
+      DELETE_FLAGS=" --delete --delete-excluded"
   esac
 
   shift
@@ -39,9 +43,9 @@ echo "Sync source: $MSSRC"
 echo "Sync target: \"$MSTGT\""
 echo "Arguments: \"$MSARGS\""
 
-CMD="rsync -$MSARGS $MSSRC --exclude '*.DS_Store' \"$MSTGT\""
+CMD="rsync -${MSARGS}${DELETE_FLAGS} --exclude '*.DS_Store' $MSSRC \"$MSTGT\""
 
 echo "Issuing command: '$CMD'"
 echo "======================"
 
-rsync -$MSARGS $MSSRC --exclude '*.DS_Store' "$MSTGT"
+rsync -$MSARGS${DELETE_FLAGS} --exclude '*.DS_Store' $MSSRC "$MSTGT"
