@@ -1,0 +1,47 @@
+#!/bin/bash
+
+while [[ $# -gt 1 ]]; do
+  key=$1
+
+  case $key in
+    -p | --pretend )
+      PRETEND=YES
+      ;;
+  esac
+
+  shift
+done
+
+# msync what?
+case $1 in
+  music)
+    echo "Syncing music"
+    MSSRC=/var/media/music/
+    MSTGT="sshd@10.1.1.11:/shares/Public/Shared Music"
+    ;;
+  video)
+    echo "Syncing video"
+    MSSRC=/var/media/video/
+    MSTGT="sshd@10.1.1.11:/shares/Public/Shared Videos"
+    ;;
+  *)
+    echo "Unknown source: $1"
+    exit -1
+    ;;
+esac
+
+MSARGS="azPvs"
+
+[ ! -z "$PRETEND" ] && MSARGS="${MSARGS}n"
+
+echo "======================"
+echo "Sync source: $MSSRC"
+echo "Sync target: \"$MSTGT\""
+echo "Arguments: \"$MSARGS\""
+
+CMD="rsync -$MSARGS $MSSRC --exclude '*.DS_Store' \"$MSTGT\""
+
+echo "Issuing command: '$CMD'"
+echo "======================"
+
+rsync -$MSARGS $MSSRC --exclude '*.DS_Store' "$MSTGT"
