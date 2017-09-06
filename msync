@@ -1,38 +1,66 @@
 #!/bin/bash
 
+PRETEND=
 DELETE_FLAGS=
+RESTORE=
 
-while [[ $# -gt 1 ]]; do
-  key=$1
+ARGS=$(getopt -o pdr --long pretend,delete,restore -n msync -- "$@")
 
-  case $key in
+if [ $? != 0 ] ; then
+  echo "Terminating..." >&2
+  exit 1
+fi
+
+eval set -- "$ARGS"
+
+while true; do
+  case "$1" in
     -p | --pretend )
       PRETEND=YES
       ;;
     -d | --delete )
       DELETE_FLAGS=" --delete --delete-excluded"
+      ;;
+    -r | --restore)
+      RESTORE=YES
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      break ;;
   esac
 
   shift
 done
 
 # msync what?
+# set SRC and TGT variables
 case $1 in
   music)
     echo "Syncing music"
-    MSSRC=/var/media/music/
-    MSTGT="sshd@10.1.1.11:/shares/Public/Shared Music"
+    SRC=/var/media/music
+    TGT="sshd@10.1.1.11:/shares/Public/Shared Music"
     ;;
   video)
     echo "Syncing video"
-    MSSRC=/var/media/video/
-    MSTGT="sshd@10.1.1.11:/shares/Public/Shared Videos"
+    SRC=/var/media/video
+    TGT="sshd@10.1.1.11:/shares/Public/Shared Videos"
     ;;
   *)
     echo "Unknown source: $1"
     exit -1
     ;;
 esac
+
+if [ -z "$RESTORE" ] ; then
+  MSSRC="$SRC/"
+  MSTGT="$TGT"
+else
+  MSSRC="$TGT/"
+  MSTGT="$SRC"
+fi
 
 MSARGS="azPvs"
 
@@ -48,4 +76,4 @@ CMD="rsync -${MSARGS}${DELETE_FLAGS} --exclude '*.DS_Store' $MSSRC \"$MSTGT\""
 echo "Issuing command: '$CMD'"
 echo "======================"
 
-rsync -$MSARGS${DELETE_FLAGS} --exclude '*.DS_Store' $MSSRC "$MSTGT"
+rsync -$MSARGS${DELETE_FLAGS} --exclude '*.DS_Store' "$MSSRC" "$MSTGT"
