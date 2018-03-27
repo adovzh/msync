@@ -3,8 +3,9 @@
 PRETEND=
 DELETE_FLAGS=
 RESTORE=
+MSYNC_PATHS=~/.msync_paths
 
-ARGS=$(getopt -o pdr --long pretend,delete,restore -n msync -- "$@")
+ARGS=$(getopt -o pdrf: --long pretend,delete,restore,file: -n msync -- "$@")
 
 if [ $? != 0 ] ; then
   echo "Terminating..." >&2
@@ -24,6 +25,10 @@ while true; do
     -r | --restore)
       RESTORE=YES
       ;;
+	-f | --file)
+	  shift
+	  MSYNC_PATHS="$1"
+	  ;;
     --)
       shift
       break
@@ -34,6 +39,8 @@ while true; do
 
   shift
 done
+
+echo "Reading paths from $MSYNC_PATHS"
 
 # msync what?
 # set SRC and TGT variables
