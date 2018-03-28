@@ -3,9 +3,10 @@
 PRETEND=
 DELETE_FLAGS=
 RESTORE=
+BATCH=
 MSYNC_PATHS=~/.msync_paths
 
-ARGS=$(getopt -o pdrf: --long pretend,delete,restore,file: -n msync -- "$@")
+ARGS=$(getopt -o pdrbf: --long pretend,delete,restore,batch,file: -n msync -- "$@")
 
 if [ $? != 0 ] ; then
   echo "Terminating..." >&2
@@ -28,6 +29,9 @@ while true; do
 	-f | --file)
 	  shift
 	  MSYNC_PATHS="$1"
+	  ;;
+	-b | --batch)
+	  BATCH=YES
 	  ;;
     --)
       shift
@@ -69,9 +73,15 @@ else
   MSTGT="$SRC"
 fi
 
-MSARGS="azPvs"
+MSARGS="azvs"
 
 [ ! -z "$PRETEND" ] && MSARGS="${MSARGS}n"
+
+if [ -z "$BATCH" ] ; then
+  MSARGS="${MSARGS}P"
+else
+  MSARGS="${MSARGS} --partial"
+fi
 
 echo "======================"
 echo "Sync source: $MSSRC"
