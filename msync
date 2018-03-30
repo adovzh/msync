@@ -59,6 +59,11 @@ case $1 in
     SRC=/var/media/video
     TGT="sshd@10.1.1.11:/shares/Public/Shared Videos"
     ;;
+  pictures)
+	echo "Syncing pictures"
+	SRC=/var/media/pictures
+	TGT="sshd@10.1.1.11:/shares/Public/Shared Pictures"
+	;;
   *)
     echo "Unknown source: $1"
     exit -1
