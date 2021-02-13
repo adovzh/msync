@@ -46,28 +46,40 @@ done
 
 echo "Reading paths from $MSYNC_PATHS"
 
+if [[ -f "$MSYNC_PATHS" && -r "$MSYNC_PATHS" ]] ; then
+	. $MSYNC_PATHS
+	if [[ -z "$MSYNC_SERVER" ]] ; then
+		echo "Environment variable MSYNC_SERVER is not set."
+		exit 1
+	fi
+	echo Synchronising with $MSYNC_SERVER
+else
+	echo "File $MSYNC_PATHS does not exist or not readable."
+	exit 1
+fi
+
 # msync what?
 # set SRC and TGT variables
 case $1 in
   music)
     echo "Syncing music"
     SRC=/var/media/music
-    TGT="sshd@10.1.1.11:/shares/Public/Shared Music"
+    TGT="sshd@${MSYNC_SERVER}:/shares/Public/Shared Music"
     ;;
   video)
     echo "Syncing video"
     SRC=/var/media/video
-    TGT="sshd@10.1.1.11:/shares/Public/Shared Videos"
+    TGT="sshd@${MSYNC_SERVER}:/shares/Public/Shared Videos"
     ;;
   pictures)
 	echo "Syncing pictures"
 	SRC=/var/media/pictures
-	TGT="sshd@10.1.1.11:/shares/Public/Shared Pictures"
+	TGT="sshd@${MSYNC_SERVER}:/shares/Public/Shared Pictures"
 	;;
   stuff)
 	echo "Syncing stuff"
 	SRC=/var/media/stuff
-	TGT="sshd@10.1.1.11:/shares/media/stuff"
+	TGT="sshd@${MSYNC_SERVER}:/shares/media/stuff"
 	;;
   *)
     echo "Unknown source: $1"
