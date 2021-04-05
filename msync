@@ -6,7 +6,7 @@ RESTORE=
 BATCH=
 MSYNC_PATHS=~/.msync_paths
 
-ARGS=$(getopt -o pdrbf: --long pretend,delete,restore,batch,file: -n msync -- "$@")
+ARGS=$(getopt -o pdrzbf: --long pretend,delete,restore,compress,batch,file: -n msync -- "$@")
 
 if [ $? != 0 ] ; then
   echo "Terminating..." >&2
@@ -26,13 +26,16 @@ while true; do
     -r | --restore)
       RESTORE=YES
       ;;
-	-f | --file)
-	  shift
-	  MSYNC_PATHS="$1"
-	  ;;
-	-b | --batch)
-	  BATCH=YES
-	  ;;
+    -z | --compress )
+      COMPRESS_FLAG=YES
+      ;;
+    -f | --file)
+      shift
+      MSYNC_PATHS="$1"
+      ;;
+    -b | --batch)
+      BATCH=YES
+      ;;
     --)
       shift
       break
@@ -95,9 +98,10 @@ else
   MSTGT="$SRC"
 fi
 
-MSARGS="azvs"
+MSARGS="aPvs"
 
 [ ! -z "$PRETEND" ] && MSARGS="${MSARGS}n"
+[ ! -z "$COMPRESS_FLAG" ] && MSARGS="${MSARGS}z"
 
 if [ -z "$BATCH" ] ; then
   MSARGS="${MSARGS}P"
