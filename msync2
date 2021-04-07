@@ -1,0 +1,119 @@
+#!/bin/zsh
+
+msync_answer() {
+	(( ! $1 )) && echo "%B%F{green}yes%f%b" || echo "%B%F{red}no%f%b"
+}
+
+msync_sync() {
+	local module=$1
+	local src=$2
+	local dest=$3
+	local args=$4
+
+	echo "$0: $module, '$src' -> '$dest', args: '$args'"
+	[[ -n $PRETEND ]] && echo Predending
+	[[ -n $DELETE ]] && echo Deleting
+
+	if [[ -z $RESTORE ]]; then
+		source_path="$src/"
+		dest_path="$dest"
+	else
+		source_path="$dest/"
+		dest_path="$src"
+	fi
+
+	num_changes=$(rsync -ani "$source_path" "$dest_path" | wc -l)
+
+	if (( num_changes > 0 )); then
+		echo Running rsync
+	else
+		echo "Module '$module' is already up to date"
+	fi
+}
+
+CONF_FILE=~/.msync_conf
+
+# parse options
+ARGS=$(getopt -o pdrzbf: --long pretend,delete,restore,compress,batch,file: -n ${0:t} -- "$@")
+[ $? -eq 0 ] || { echo "Error parsing the arguments"; exit 1 }  
+
+eval set -- "$ARGS"
+
+while true; do
+	case "$1" in
+		-p || --pretend)
+			PRETEND=yes
+			;;
+		-d || --delete)
+			DELETE=" --delete --delete-excluded"
+			;;
+		-r || --restore)
+			RESTORE=yes
+			;;
+		-z || --compress)
+			COMPRESS=yes
+			;;
+		-f || --flags)
+			shift
+			CONF_FILE="$1"
+			;;
+		-b || --batch)
+			BATCH=yes
+			;;
+		--)
+			shift
+			break
+			;;
+		*)
+			break
+			;;
+	esac
+	
+	shift
+done
+
+if [[ -f "$CONF_FILE" && -r "$CONF_FILE" ]]; then
+	echo "Reading configuration from $CONF_FILE"
+	. "$CONF_FILE"
+else
+	echo "Error reading configuration from $CONF_FILE"
+	exit -1
+fi
+
+MSYNC_MODULES=(music video)
+
+if [[ -z "$1" || "$1" = all ]]; then
+	SELECTED_MODULES=($MSYNC_MODULES)
+elif (( $MSYNC_MODULES[(Ie)$1] )); then
+	SELECTED_MODULES=($1)
+else
+	echo "Unknown module '$1', supported modules are ${(j:/:)MSYNC_MODULES}"
+fi
+
+for MODULE in $SELECTED_MODULES ; do
+	echo "Syncing module '${MODULE}'"
+	MODULE_SRC="${MSYNC_CONF[${MODULE}.source]}"
+	MODULE_DEST="${MSYNC_CONF[${MODULE}.dest]}"
+
+	[[ -n "$MODULE_SRC" ]] && \
+		I_MODULE_SRC_EXISTS=0 || \
+		I_MODULE_SRC_EXISTS=1
+	print -P "$MODULE source ($MODULE_SRC) exists? $(msync_answer $I_MODULE_SRC_EXISTS)"
+
+	[[ -n "$MODULE_DEST" ]] && \
+		I_MODULE_DEST_EXISTS=0 || \
+		I_MODULE_DEST_EXISTS=1
+	print -P "$MODULE destination ($MODULE_DEST) exists? $(msync_answer $I_MODULE_DEST_EXISTS)"
+
+	if (( I_MODULE_SRC_EXISTS + I_MODULE_DEST_EXISTS == 0 )) ; then
+		echo "Ready to msync $MODULE"
+		msync_sync $MODULE $MODULE_SRC $MODULE_DEST $*
+	else
+#		echo "Result is $(( I_MODULE_SRC_EXISTS + I_MODULE_DEST_EXISTS )) for $MODULE"
+		echo "Skipping module '${MODULE}'"
+	fi
+	echo '===================='
+done
+
+echo "$0:t processing finished"
+
