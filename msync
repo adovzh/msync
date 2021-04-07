@@ -84,6 +84,11 @@ case $1 in
 	SRC=/var/media/stuff
 	TGT="sshd@${MSYNC_SERVER}:/shares/media/stuff"
 	;;
+  tmp)
+	echo "Syncing tmp"
+	SRC=/var/media/tmp
+	TGT="sshd@${MSYNC_SERVER}:/shares/secure"
+	;;
   *)
     echo "Unknown source: $1"
     exit -1
