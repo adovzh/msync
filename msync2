@@ -8,10 +8,9 @@ msync_sync() {
 	local module=$1
 	local src=$2
 	local dest=$3
-	local args=$4
 
-	echo "$0: $module, '$src' -> '$dest', args: '$args'"
-	[[ -n $PRETEND ]] && echo Predending
+	[[ -n $VERBOSE ]] && echo "$0: $module, '$src' -> '$dest'"
+	[[ -n $VERBOSE && -n $PRETEND ]] && echo Predending
 	[[ -n $DELETE ]] && DELETE_ARGS=(--delete --delete-excluded --exclude "'*.DS_Store'")
 
 	if [[ -z $RESTORE ]]; then
@@ -22,14 +21,19 @@ msync_sync() {
 		dest_path="$src"
 	fi
 
-	num_changes=$(rsync -ani "${DELETE_ARGS[@]}" "$source_path" "$dest_path" | wc -l)
+	num_changes=$(rsync -ani ${DELETE_ARGS[@]} "$source_path" "$dest_path" | wc -l)
+
+	if [[ -n $STATUS ]]; then
+		print -P "Module '$module' up to date: $(msync_answer $num_changes)"
+		return
+	fi
 
 	if (( num_changes == 0 )); then
 		echo "Module '$module' is already up to date"
 		return
 	fi
 
-	echo "Running rsync"
+	echo "Syncing module '${module}'"
 	BASE_ARGS="-avs"
 	[[ -n $PRETEND ]] && PRETEND_ARGS=n
 	[[ -n $COMPRESS ]] && COMPRESS_ARGS=z
@@ -38,20 +42,22 @@ msync_sync() {
 
 	# MSARGS="${BASE_ARGS}${PRETEND_ARGS}${COMPRESS_ARGS}${BATCH_ARGS}${DELETE}${EXCLUDE_ARGS}"
 	MSARGS="${BASE_ARGS}${PRETEND_ARGS}${COMPRESS_ARGS}${BATCH_ARGS} ${^DELETE_ARGS}"
-
-	echo "Sync source: $source_path"
-	echo "Sync target: $dest_path"
-	echo "Arguments: \"$MSARGS\""
-
 	CMD="rsync ${MSARGS} \"${source_path}\" \"${dest_path}\""
-	echo "Issuing command: '$CMD'"
+
+	if [[ -n $VERBOSE ]]; then
+		echo "Sync source: $source_path"
+		echo "Sync target: $dest_path"
+		echo "Arguments: \"$MSARGS\""
+		echo "Issuing command: '$CMD'"
+	fi
+
 	eval "$CMD"
 }
 
 CONF_FILE=~/.msync_conf
 
 # parse options
-ARGS=$(getopt -o pdrzbf: --long pretend,delete,restore,compress,batch,file: -n ${0:t} -- "$@")
+ARGS=$(getopt -o pdrzbvsf: --long pretend,delete,restore,compress,batch,verbose,status,file: -n ${0:t} -- "$@")
 [ $? -eq 0 ] || { echo "Error parsing the arguments"; exit 1 }  
 
 eval set -- "$ARGS"
@@ -77,6 +83,12 @@ while true; do
 		-b || --batch)
 			BATCH=yes
 			;;
+		-v || --verbose)
+			VERBOSE=yes
+			;;
+		-s || --status)
+			STATUS=yes
+			;;
 		--)
 			shift
 			break
@@ -90,7 +102,7 @@ while true; do
 done
 
 if [[ -f "$CONF_FILE" && -r "$CONF_FILE" ]]; then
-	echo "Reading configuration from $CONF_FILE"
+	[[ -n $VERBOSE ]] && echo "Reading configuration from $CONF_FILE"
 	. "$CONF_FILE"
 else
 	echo "Error reading configuration from $CONF_FILE"
@@ -106,29 +118,28 @@ else
 fi
 
 for MODULE in $SELECTED_MODULES ; do
-	echo "Syncing module '${MODULE}'"
+	[[ -n $VERBOSE ]] && echo "Syncing module '${MODULE}'"
 	MODULE_SRC="${MSYNC_CONF[${MODULE}.source]}"
 	MODULE_DEST="${MSYNC_CONF[${MODULE}.dest]}"
 
-	[[ -n "$MODULE_SRC" ]] && \
+	[[ -n $MODULE_SRC ]] && \
 		I_MODULE_SRC_EXISTS=0 || \
 		I_MODULE_SRC_EXISTS=1
-	print -P "$MODULE source ($MODULE_SRC) exists? $(msync_answer $I_MODULE_SRC_EXISTS)"
+	[[ -n "$VERBOSE" ]] && print -P "$MODULE source ($MODULE_SRC) exists? $(msync_answer $I_MODULE_SRC_EXISTS)"
 
-	[[ -n "$MODULE_DEST" ]] && \
+	[[ -n $MODULE_DEST ]] && \
 		I_MODULE_DEST_EXISTS=0 || \
 		I_MODULE_DEST_EXISTS=1
-	print -P "$MODULE destination ($MODULE_DEST) exists? $(msync_answer $I_MODULE_DEST_EXISTS)"
+	[[ -n $VERBOSE ]] && print -P "$MODULE destination ($MODULE_DEST) exists? $(msync_answer $I_MODULE_DEST_EXISTS)"
 
 	if (( I_MODULE_SRC_EXISTS + I_MODULE_DEST_EXISTS == 0 )) ; then
-		echo "Ready to msync $MODULE"
-		msync_sync $MODULE $MODULE_SRC $MODULE_DEST $*
+		[[ -n $VERBOSE ]] && echo "Ready to msync $MODULE"
+		msync_sync $MODULE $MODULE_SRC $MODULE_DEST
 	else
-#		echo "Result is $(( I_MODULE_SRC_EXISTS + I_MODULE_DEST_EXISTS )) for $MODULE"
 		echo "Skipping module '${MODULE}'"
 	fi
-	echo '===================='
+	[[ -n $VERBOSE ]] && echo '===================='
 done
 
-echo "$0:t processing finished"
+[[ -n $VERBOSE ]] && echo "$0:t processing finished"
 
